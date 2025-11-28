@@ -1,8 +1,16 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from playwright.async_api import async_playwright
+from openai import OpenAI
+from dotenv import load_dotenv
 import os
 import asyncio
+import shutil
+
+# Load environment variables from .env file
+load_dotenv()
+
+openAIClient = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 app = FastAPI()
 
@@ -59,7 +67,7 @@ async def initialize_google_calendar():
         if "accounts.google.com" in page.url or "workspace.google.com" in page.url:
             print("Login required. Please log in manually in the browser window.")
             
-            await page.wait_for_url(calenaer_url+"**", timeout=0) # 0 timeout means wait indefinitely            
+            await page.wait_for_url(f"{calenaer_url}**", timeout=0) # 0 timeout means wait indefinitely
             await context.storage_state(path=STORAGE_STATE_PATH)
             print("Login successful. Session saved.")
         else:
@@ -75,4 +83,56 @@ async def initialize_google_calendar():
 async def receive_audio(audio_blob: UploadFile = File(...)):
     print(f"Received audio: {audio_blob.filename}, size: {audio_blob.size}")
     
-    return {"status": "received", "filename": audio_blob.filename}
+    # 1. Save the uploaded file temporarily
+    temp_filename = f"temp_{audio_blob.filename}"
+
+    with open(temp_filename, "wb") as buffer:
+        shutil.copyfileobj(audio_blob.file, buffer)
+
+    try:
+        # 2. Transcribe audio using OpenAI Whisper
+        with open(temp_filename, "rb") as audio_file:
+            transcription = openAIClient.audio.transcriptions.create(
+                model="whisper-1", 
+                file=audio_file
+            )
+        
+        user_text = transcription.text
+        print(f"Transcribed text: {user_text}")
+
+        # 3. Process text with LLM to get JSON
+        system_prompt = """
+        You are a effective calendar assistant.
+        Extract event details from the user's input.
+        Return ONLY a JSON object with the following keys:
+        - summary (string): Title of the event
+        - start_time (string): ISO 8601 format (e.g., 2023-10-27T10:00:00)
+        - end_time (string): ISO 8601 format
+        - description (string): Any extra details
+        - location (string): Location if mentioned
+        
+        If the date is relative (like "tomorrow", "yesterday", "the day after tomorrow", however, user might speak in Mandarin), assume today is the current date.
+        """
+
+        response = openAIClient.chat.completions.create(
+            model="gpt-3.5-turbo-0125", # or gpt-4-turbo
+            response_format={ "type": "json_object" },
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_text}
+            ]
+        )
+
+        result_json = response.choices[0].message.content
+        print(f"AI Result: {result_json}")
+
+        return {"status": "processed", "transcription": user_text, "data": result_json}
+
+    except Exception as e:
+        print(f"Error processing audio: {e}")
+        return {"status": "error", "message": str(e)}
+    
+    finally:
+        # 4. Cleanup
+        if os.path.exists(temp_filename):
+            os.remove(temp_filename)
