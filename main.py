@@ -72,11 +72,7 @@ async def initialize_google_calendar():
     return {"status": "initialized", "message": "Google Calendar session checked/created."}
 
 @app.post("/audio-recording")
-async def receive_audio(
-    audio_blob: UploadFile = File(...),
-    google_credential: str = Form(...)
-):
+async def receive_audio(audio_blob: UploadFile = File(...)):
     print(f"Received audio: {audio_blob.filename}, size: {audio_blob.size}")
-    print(f"Received credential: {google_credential[:10]}...")
     
     return {"status": "received", "filename": audio_blob.filename}
