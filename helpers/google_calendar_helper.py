@@ -1,4 +1,3 @@
-import os
 import asyncio
 import urllib.parse
 from datetime import datetime
