@@ -8,7 +8,9 @@ class GoogleCalendarHelper:
     async def check_conflict(
         context: any, event_data: object, user_text: str, result_json: object
     ):
-        print(f"GoogleCalendarHelper check_conflict() event_data: {event_data}, user_text: {user_text}, result_json: {result_json}")
+        print(
+            f"GoogleCalendarHelper check_conflict() event_data: {event_data}, user_text: {user_text}, result_json: {result_json}"
+        )
 
         if context is None:
             raise ValueError(
@@ -46,10 +48,14 @@ class GoogleCalendarHelper:
             if conflict != None:
                 raise Exception(f"Agenda conflict: {conflict.get('reason')}")
 
-            print("GoogleCalendarHelper check_conflict() No conflict detected. Proceeding to create event.")
+            print(
+                "GoogleCalendarHelper check_conflict() No conflict detected. Proceeding to create event."
+            )
 
         except Exception as conflict_err:
-            print(f"GoogleCalendarHelper check_conflict() Warning: Could not check conflicts: {conflict_err}")
+            print(
+                f"GoogleCalendarHelper check_conflict() Warning: Could not check conflicts: {conflict_err}"
+            )
             # Proceed anyway if conflict check fails
 
         finally:
@@ -86,12 +92,13 @@ class GoogleCalendarHelper:
         await page.wait_for_load_state("domcontentloaded")
 
         save_button = page.get_by_role("button", name="Save")
-        
-        await save_button.wait_for() # Wait for it to be visible.
-        await asyncio.sleep(1) # Small delay to ensure interactivity.
-        await save_button.click()
-        await asyncio.sleep(2) # Wait for saving process completed.
-        await page.close()
-        
-        print("GoogleCalendarHelper append_event() Event added successfully via Playwright.")
 
+        await save_button.wait_for()  # Wait for it to be visible.
+        await asyncio.sleep(1)  # Small delay to ensure interactivity.
+        await save_button.click()
+        await asyncio.sleep(2)  # Wait for saving process completed.
+        await page.close()
+
+        print(
+            "GoogleCalendarHelper append_event() Event added successfully via Playwright."
+        )
