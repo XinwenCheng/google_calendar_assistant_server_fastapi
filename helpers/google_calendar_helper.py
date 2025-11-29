@@ -9,7 +9,9 @@ STORAGE_STATE_PATH = f"{StorageHelper.get_path('state')}"
 
 
 class GoogleCalendarHelper:
-    async def open_calendar(context: any):
+    async def init(context: any):
+        print(f"GoogleCalendarHelper init()")
+
         page = await context.new_page()
         calenaer_url = "https://calendar.google.com/"
 
@@ -17,7 +19,7 @@ class GoogleCalendarHelper:
 
         try:
             await page.wait_for_load_state(
-                "networkidle"
+                "domcontentloaded"
             )  # Wait until the page was loaded completely.
 
             signInRequired = (
@@ -35,6 +37,9 @@ class GoogleCalendarHelper:
 
         except Exception as e:
             print(f"initialize_google_calendar() e: {e}")
+
+        finally:
+            await page.close()
 
     async def check_conflict(
         context: any, event_data: object, user_text: str, result_json: object
@@ -128,7 +133,6 @@ class GoogleCalendarHelper:
         await asyncio.sleep(1)  # Small delay to ensure interactivity.
         await save_button.click()
         await asyncio.sleep(2)  # Wait for saving process completed.
-        await page.close()
 
         print(
             "GoogleCalendarHelper append_event() Event added successfully via Playwright."

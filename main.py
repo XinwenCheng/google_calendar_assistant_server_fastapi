@@ -40,7 +40,7 @@ async def startup():
     browser_context = await PlaywrightHelper.init()
 
     try:
-        await GoogleCalendarHelper.open_calendar(context=browser_context)
+        await GoogleCalendarHelper.init(context=browser_context)
 
     except Exception as e:
         print(f"startup() e: {e}")
