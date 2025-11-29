@@ -33,8 +33,7 @@ class GoogleCalendarHelper:
             main_role = page.locator("div[role='main']")
             await main_role.wait_for()
 
-            # Extract text from the agenda view
-            # This usually contains times and titles of existing events
+            # Extract text from the agenda view which usually contains times and titles of existing events.
             schedule_text = await main_role.inner_text()
 
             conflict = OpenAIHelper.check_conflict(
@@ -68,13 +67,13 @@ class GoogleCalendarHelper:
                 f"GoogleCalendarHelper append_event() invalid event_data: {event_data}"
             )
 
-        # Handle dates for Google Calendar URL with format: YYYYMMDDTHHMMSS or YYYYMMDD
+        # Handle dates for Google Calendar URL with format: YYYYMMDDTHHMMSS or YYYYMMDD.
+        # Example: https://www.google.com/calendar/render?action=TEMPLATE&text=My+Event&dates=20251225T100000Z/20251225T110000Z
         start_str = event_data.get("start_time", "").replace("-", "").replace(":", "")
         end_str = event_data.get("end_time", "").replace("-", "").replace(":", "")
 
         title = urllib.parse.quote(event_data.get("title", ""))
 
-        # Construct URL using the modern Google Calendar interface (eventedit)
         calendar_url = (
             f"https://calendar.google.com/calendar/u/0/r/eventedit?"
             f"text={title}"
@@ -84,24 +83,14 @@ class GoogleCalendarHelper:
         page = await context.new_page()
 
         await page.goto(calendar_url)
-
-        # Wait for page to load content
         await page.wait_for_load_state("domcontentloaded")
 
-        # Target the Save button in the modern UI
-        # It usually has role="button" and accessible name "Save"
         save_button = page.get_by_role("button", name="Save")
-
-        # Wait for it to be visible
-        await save_button.wait_for()
-
-        # Small delay to ensure interactivity
-        await asyncio.sleep(1)
-
+        
+        await save_button.wait_for() # Wait for it to be visible.
+        await asyncio.sleep(1) # Small delay to ensure interactivity.
         await save_button.click()
-
-        # Wait briefly for save to complete then close
-        await asyncio.sleep(2)
+        await asyncio.sleep(2) # Wait for saving process completed.
         await page.close()
         
         print("GoogleCalendarHelper append_event() Event added successfully via Playwright.")
