@@ -13,10 +13,6 @@ from helpers.playwright_helper import PlaywrightHelper
 
 load_dotenv()  # Load environment variables from .env file
 
-openAIClient = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-openAIModel = "gpt-5.1-2025-11-13"
-open_ai_response_format = {"type": "json_object"}
-
 app = FastAPI()
 
 app.add_middleware(
@@ -123,6 +119,5 @@ async def receive_audio(audio_blob: UploadFile = File(...)):
         return {"status": "error", "message": str(e)}
 
     finally:
-        # 4. Cleanup
         if os.path.exists(temp_filename):
-            os.remove(temp_filename)
+            os.remove(temp_filename)  # Clean up.
