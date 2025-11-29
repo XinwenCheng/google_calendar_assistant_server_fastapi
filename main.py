@@ -88,8 +88,7 @@ async def receive_audio(audio_blob: UploadFile = File(...)):
 
         print(f"receive_audio() event_data: {event_data}")
 
-        # Simply see the event_data is OK if 'title' exists.
-        if "title" in event_data:
+        if "start_time" in event_data:
             try:
                 await GoogleCalendarHelper.check_conflict(
                     context=browser_context,
@@ -99,15 +98,17 @@ async def receive_audio(audio_blob: UploadFile = File(...)):
                 )
 
             except Exception as e:
-                pending_event_data = event_data
+                if pending_event_data is None:
+                    pending_event_data = event_data
 
                 return {"status": "conflict", "message": str(e)}
 
-        elif (
+        if (
             pending_event_data is not None
             and "start_time" in event_data
             and "end_time" in event_data
         ):
+            print(f"receive_audio() pending_event_data: {pending_event_data}")
             event_data["title"] = pending_event_data.get("title")
 
         await GoogleCalendarHelper.append_event(
