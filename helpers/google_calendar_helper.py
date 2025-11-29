@@ -2,7 +2,7 @@ import os
 import asyncio
 import urllib.parse
 from datetime import datetime
-from open_ai_helper import OpenAIHelper
+from helpers.open_ai_helper import OpenAIHelper
 
 
 class GoogleCalendarHelper:

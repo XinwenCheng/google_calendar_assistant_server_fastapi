@@ -2,7 +2,7 @@ import os
 import json
 from openai import OpenAI
 from dotenv import load_dotenv
-from prompt_helper import PromptHelper
+from helpers.prompt_helper import PromptHelper
 
 
 load_dotenv() # Load environment variables from .env file

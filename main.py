@@ -4,13 +4,12 @@ from playwright.async_api import async_playwright
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
-import asyncio
 import shutil
 import json
-from extraction_helper import ExtractionHelper
-from open_ai_helper import OpenAIHelper
-from storage_helper import StorageHelper
-from google_calendar_helper import GoogleCalendarHelper
+from helpers.extraction_helper import ExtractionHelper
+from helpers.open_ai_helper import OpenAIHelper
+from helpers.storage_helper import StorageHelper
+from helpers.google_calendar_helper import GoogleCalendarHelper
 
 
 load_dotenv() # Load environment variables from .env file
@@ -123,7 +122,7 @@ async def receive_audio(audio_blob: UploadFile = File(...)):
 
     except Exception as e:
         print(f"receive_audio() e: {e}")
-        
+
         return {"status": "error", "message": str(e)}
     
     finally:
