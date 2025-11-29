@@ -7,7 +7,6 @@ import shutil
 import json
 from helpers.extraction_helper import ExtractionHelper
 from helpers.open_ai_helper import OpenAIHelper
-from helpers.storage_helper import StorageHelper
 from helpers.google_calendar_helper import GoogleCalendarHelper
 from helpers.playwright_helper import PlaywrightHelper
 
@@ -34,46 +33,27 @@ def read_root():
     return "Hey there, I'm your Google Calendar Assistant."
 
 
-STORAGE_STATE_PATH = f"{StorageHelper.get_path('state')}"
 browser_context = None
 pending_event_data = None  # Temporarily store the conflict agenda.
 
 
 @app.on_event("startup")
-async def initialize_google_calendar():
+async def startup():
     global browser_context
 
     browser_context = await PlaywrightHelper.init()
 
-    page = await browser_context.new_page()
-    calenaer_url = "https://calendar.google.com/"
-
-    await page.goto(calenaer_url)
-
     try:
-        await page.wait_for_load_state(
-            "networkidle"
-        )  # Wait until the page was loaded completely.
-
-        signInRequired = (
-            "accounts.google.com" in page.url or "workspace.google.com" in page.url
-        )
-        print(f"initialize_google_calendar() signInRequired: {signInRequired}")
-
-        if signInRequired:
-            await page.wait_for_url(
-                f"{calenaer_url}**", timeout=0
-            )  # 0 timeout means wait indefinitely
-            await browser_context.storage_state(
-                path=STORAGE_STATE_PATH
-            )  # Save state after signed in for reuse.
+        await GoogleCalendarHelper.open_calendar(context=browser_context)
 
     except Exception as e:
-        print(f"initialize_google_calendar() e: {e}")
+        print(f"startup() e: {e}")
+
+        return {"status": "error", "message": "Server start up failed."}
 
     return {
         "status": "initialized",
-        "message": "Google Calendar session checked/created.",
+        "message": "Google Calendar initialized.",
     }
 
 

@@ -2,9 +2,40 @@ import asyncio
 import urllib.parse
 from datetime import datetime
 from helpers.open_ai_helper import OpenAIHelper
+from helpers.storage_helper import StorageHelper
+
+
+STORAGE_STATE_PATH = f"{StorageHelper.get_path('state')}"
 
 
 class GoogleCalendarHelper:
+    async def open_calendar(context: any):
+        page = await context.new_page()
+        calenaer_url = "https://calendar.google.com/"
+
+        await page.goto(calenaer_url)
+
+        try:
+            await page.wait_for_load_state(
+                "networkidle"
+            )  # Wait until the page was loaded completely.
+
+            signInRequired = (
+                "accounts.google.com" in page.url or "workspace.google.com" in page.url
+            )
+            print(f"initialize_google_calendar() signInRequired: {signInRequired}")
+
+            if signInRequired:
+                await page.wait_for_url(
+                    f"{calenaer_url}**", timeout=0
+                )  # 0 timeout means wait indefinitely
+                await context.storage_state(
+                    path=STORAGE_STATE_PATH
+                )  # Save state after signed in for reuse.
+
+        except Exception as e:
+            print(f"initialize_google_calendar() e: {e}")
+
     async def check_conflict(
         context: any, event_data: object, user_text: str, result_json: object
     ):
