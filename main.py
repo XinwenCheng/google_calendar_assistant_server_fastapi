@@ -1,6 +1,5 @@
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from playwright.async_api import async_playwright
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
@@ -10,6 +9,7 @@ from helpers.extraction_helper import ExtractionHelper
 from helpers.open_ai_helper import OpenAIHelper
 from helpers.storage_helper import StorageHelper
 from helpers.google_calendar_helper import GoogleCalendarHelper
+from helpers.playwright_helper import PlaywrightHelper
 
 
 load_dotenv()  # Load environment variables from .env file
@@ -35,41 +35,15 @@ def read_root():
 
 
 STORAGE_STATE_PATH = f"{StorageHelper.get_path('state')}"
-playwright = None
-browser = None
 browser_context = None
 pending_event_data = None  # Temporarily store the conflict agenda.
 
 
 @app.on_event("startup")
 async def initialize_google_calendar():
-    global playwright, browser, browser_context
+    global browser_context
 
-    if playwright is None:
-        playwright = await async_playwright().start()
-
-    if browser is None:
-        browser = await playwright.chromium.launch(
-            headless=False,
-            channel="chrome",
-            args=[
-                "--disable-blink-features=AutomationControlled"
-            ],  # Hide the feature of automation or Chrome will see this as a robot.
-        )
-
-    sessionExists = os.path.exists(STORAGE_STATE_PATH)
-    print(f"initialize_google_calendar() sessionExists: {sessionExists}")
-
-    if sessionExists:
-        browser_context = await browser.new_context(
-            storage_state=STORAGE_STATE_PATH
-        )  # Bypass the sign in process with the existing state.
-    else:
-        browser_context = await browser.new_context()
-
-    await browser_context.add_init_script(
-        "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-    )  # Disable webdriver detection for avoiding the anti-scraping.
+    browser_context = await PlaywrightHelper.init()
 
     page = await browser_context.new_page()
     calenaer_url = "https://calendar.google.com/"
