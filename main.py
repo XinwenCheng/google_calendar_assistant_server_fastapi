@@ -6,11 +6,18 @@ from dotenv import load_dotenv
 import os
 import asyncio
 import shutil
+import json
+from extraction_helper import ExtractionHelper
+from open_ai_helper import OpenAIHelper
+from storage_helper import StorageHelper
+from google_calendar_helper import GoogleCalendarHelper
 
-# Load environment variables from .env file
-load_dotenv()
 
-openAIClient = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+load_dotenv() # Load environment variables from .env file
+
+openAIClient=OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+openAIModel="gpt-5.1-2025-11-13"
+open_ai_response_format={ "type": "json_object" }
 
 app = FastAPI()
 
@@ -26,13 +33,14 @@ app.add_middleware(
 def read_root():
     return "Hey there, I'm your Google Calendar Assistant."
 
-STORAGE_STATE_PATH = "storage_state.json"
+STORAGE_STATE_PATH = f'{StorageHelper.get_path('state')}'
 playwright = None
 browser = None
+browser_context = None
 
 @app.on_event("startup")
 async def initialize_google_calendar():
-    global playwright, browser
+    global playwright, browser,browser_context
 
     if playwright is None:
         playwright = await async_playwright().start()
@@ -41,95 +49,81 @@ async def initialize_google_calendar():
         browser = await playwright.chromium.launch(
             headless=False, 
             channel="chrome",
-            args=["--disable-blink-features=AutomationControlled"]
+            args=["--disable-blink-features=AutomationControlled"] # Hide the feature of automation or Chrome will see this as a robot.
         )
 
-    # Check if storage state exists to reuse session
-    if os.path.exists(STORAGE_STATE_PATH):
-        print("Found existing session, trying to reuse...")
-        context = await browser.new_context(storage_state=STORAGE_STATE_PATH)
+    sessionExists = os.path.exists(STORAGE_STATE_PATH)
+    print(f'initialize_google_calendar() sessionExists: {sessionExists}')
+
+    if sessionExists:
+        browser_context = await browser.new_context(storage_state=STORAGE_STATE_PATH) # Bypass the sign in process with the existing state.
     else:
-        print("No existing session, starting fresh login...")
-        context = await browser.new_context()
+        browser_context = await browser.new_context()
 
-    # Disable webdriver detection
-    await context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    await browser_context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})") # Disable webdriver detection for avoiding the anti-scraping.
 
-    page = await context.new_page()
+    page = await browser_context.new_page()
     calenaer_url = "https://calendar.google.com/"
 
     await page.goto(calenaer_url)
 
     try:
-        # Wait a bit to see if we get redirected to login or calendar
-        await page.wait_for_load_state("networkidle")
+        await page.wait_for_load_state("networkidle") # Wait until the page was loaded completely.
         
-        if "accounts.google.com" in page.url or "workspace.google.com" in page.url:
-            print("Login required. Please log in manually in the browser window.")
-            
+        signInRequired = "accounts.google.com" in page.url or "workspace.google.com" in page.url
+        print(f'initialize_google_calendar() signInRequired: {signInRequired}')
+
+        if signInRequired:
             await page.wait_for_url(f"{calenaer_url}**", timeout=0) # 0 timeout means wait indefinitely
-            await context.storage_state(path=STORAGE_STATE_PATH)
-            print("Login successful. Session saved.")
-        else:
-            print("Already logged in.")
-
+            await browser_context.storage_state(path=STORAGE_STATE_PATH) # Save state after signed in for reuse.
+    
     except Exception as e:
-        print(f"An error occurred during initialization: {e}")
-
+        print(f"initialize_google_calendar() e: {e}")
     
     return {"status": "initialized", "message": "Google Calendar session checked/created."}
 
 @app.post("/audio-recording")
 async def receive_audio(audio_blob: UploadFile = File(...)):
-    print(f"Received audio: {audio_blob.filename}, size: {audio_blob.size}")
+    global browser_context
+
+    print(f"receive_audio() audio_blob.filename: {audio_blob.filename}, audio_blob.size: {audio_blob.size}")
     
-    # 1. Save the uploaded file temporarily
     temp_filename = f"temp_{audio_blob.filename}"
 
     with open(temp_filename, "wb") as buffer:
-        shutil.copyfileobj(audio_blob.file, buffer)
+        shutil.copyfileobj(audio_blob.file, buffer) # Save the uploaded file temporarily.
 
     try:
-        # 2. Transcribe audio using OpenAI Whisper
-        with open(temp_filename, "rb") as audio_file:
-            transcription = openAIClient.audio.transcriptions.create(
-                model="whisper-1", 
-                file=audio_file
-            )
+        user_text = OpenAIHelper.audio_to_text(filename=temp_filename)
         
-        user_text = transcription.text
-        print(f"Transcribed text: {user_text}")
+        # demoResult = ExtractionHelper.parse_text_to_event(user_text=user_text) # Demo purpose ONLY.
+        # print(f'receive_audio() demoResult: ${json.dumps(demoResult)}')
 
-        # 3. Process text with LLM to get JSON
-        system_prompt = """
-        You are a effective calendar assistant.
-        Extract event details from the user's input.
-        Return ONLY a JSON object with the following keys:
-        - summary (string): Title of the event
-        - start_time (string): ISO 8601 format (e.g., 2023-10-27T10:00:00)
-        - end_time (string): ISO 8601 format
-        - description (string): Any extra details
-        - location (string): Location if mentioned
-        
-        If the date is relative (like "tomorrow", "yesterday", "the day after tomorrow", however, user might speak in Mandarin), assume today is the current date.
-        """
+        result_json = OpenAIHelper.text_to_event(text=user_text)
+        print(f"receive_audio() result_json: {result_json}")
 
-        response = openAIClient.chat.completions.create(
-            model="gpt-3.5-turbo-0125", # or gpt-4-turbo
-            response_format={ "type": "json_object" },
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_text}
-            ]
-        )
+        try:
+            event_data = json.loads(result_json) # Parse JSON string to dict
+        except json.JSONDecodeError:
+            print("receive_audio() error: Failed to parse JSON from AI response")
 
-        result_json = response.choices[0].message.content
-        print(f"AI Result: {result_json}")
+            return {"status": "error", "message": "Invalid JSON from AI"}
 
-        return {"status": "processed", "transcription": user_text, "data": result_json}
+        # Simply see the event_data is OK if 'title' exists.
+        if "title" in event_data:
+            try:
+                await GoogleCalendarHelper.check_conflict(context=browser_context,user_text=user_text,result_json=result_json)
+
+            except Exception as e:
+                return {"status": "error", "message": str(e)}
+
+            await GoogleCalendarHelper.append_event(context=browser_context,event_data=event_data)
+
+            return {"status": "processed", "transcription": user_text, "data": result_json}
 
     except Exception as e:
-        print(f"Error processing audio: {e}")
+        print(f"receive_audio() e: {e}")
+        
         return {"status": "error", "message": str(e)}
     
     finally:
