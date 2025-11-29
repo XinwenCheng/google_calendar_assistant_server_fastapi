@@ -103,7 +103,7 @@ async def receive_audio(audio_blob: UploadFile = File(...)):
             and "start_time" in event_data
             and "end_time" in event_data
         ):
-            event_data.set("title", pending_event_data.get("title"))
+            event_data["title"] = pending_event_data.get("title")
 
         await GoogleCalendarHelper.append_event(
             context=browser_context, event_data=event_data
