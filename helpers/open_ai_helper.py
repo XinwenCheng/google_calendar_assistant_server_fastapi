@@ -40,9 +40,7 @@ class OpenAIHelper:
 
         return response.choices[0].message.content
 
-    def check_conflict(
-        schedule_text: str, event_data: object, user_text: str, result_json: object
-    ):
+    def check_conflict(schedule_text: str, event_data: object):
         prompt = PromptHelper.get_prompt_check_conflict(
             schedule_text=schedule_text, event_data=event_data
         )
@@ -55,14 +53,13 @@ class OpenAIHelper:
 
         conflict_data = json.loads(conflict_response.choices[0].message.content)
 
+        print(
+            f"OpenAIHelper check_conflict() conflict_data: {json.dumps(conflict_data)}"
+        )
+
         if conflict_data.get("conflict"):
             print(
                 f"OpenAIHelper check_conflict() conflict reason: {conflict_data.get('reason')}"
             )
 
-            return {
-                "status": "conflict",
-                "message": conflict_data.get("reason"),
-                "transcription": user_text,
-                "data": result_json,
-            }
+            raise Exception("Conflict with existing agendas.")

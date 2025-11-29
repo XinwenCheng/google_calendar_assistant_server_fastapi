@@ -74,25 +74,17 @@ class GoogleCalendarHelper:
             # Extract text from the agenda view which usually contains times and titles of existing events.
             schedule_text = await main_role.inner_text()
 
-            conflict = OpenAIHelper.check_conflict(
-                schedule_text=schedule_text,
-                event_data=event_data,
-                user_text=user_text,
-                result_json=result_json,
+            OpenAIHelper.check_conflict(
+                schedule_text=schedule_text, event_data=event_data
             )
-
-            if conflict != None:
-                raise Exception(f"Agenda conflict: {conflict.get('reason')}")
 
             print(
                 "GoogleCalendarHelper check_conflict() No conflict detected. Proceeding to create event."
             )
 
         except Exception as conflict_err:
-            print(
-                f"GoogleCalendarHelper check_conflict() Warning: Could not check conflicts: {conflict_err}"
-            )
-            # Proceed anyway if conflict check fails
+            print(f"GoogleCalendarHelper check_conflict() error: {conflict_err}")
+            raise conflict_err
 
         finally:
             await page.close()

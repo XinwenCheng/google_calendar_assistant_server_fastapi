@@ -91,13 +91,12 @@ async def receive_audio(audio_blob: UploadFile = File(...)):
         # Simply see the event_data is OK if 'title' exists.
         if "title" in event_data:
             try:
-                conflict_check_result = await GoogleCalendarHelper.check_conflict(
+                await GoogleCalendarHelper.check_conflict(
                     context=browser_context,
                     event_data=event_data,
                     user_text=user_text,
                     result_json=result_json,
                 )
-                print(f"receive_audio() {conflict_check_result}")
 
             except Exception as e:
                 pending_event_data = event_data
