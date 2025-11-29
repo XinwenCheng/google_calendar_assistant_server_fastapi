@@ -139,32 +139,32 @@ class ExtractionHelper:
 # --- Testing the function ---
 
 # Test Case 1: Standard request
-text1 = "给我的谷歌日历加上一个日程安排，明天上午十点到 11 点，和公司 CEO 会议。"
-print(f"Input: {text1}")
-print(
-    json.dumps(
-        ExtractionHelper.parse_text_to_event(text1), indent=2, ensure_ascii=False
-    )
-)
+# text1 = "给我的谷歌日历加上一个日程安排，明天上午十点到 11 点，和公司 CEO 会议。"
+# print(f"Input: {text1}")
+# print(
+#     json.dumps(
+#         ExtractionHelper.parse_text_to_event(text1), indent=2, ensure_ascii=False
+#     )
+# )
 
-print("-" * 20)
+# print("-" * 20)
 
-# Test Case 2: Duration based ("One hour")
-text2 = "明天十点开会一个小时，讨论产品架构"
-print(f"Input: {text2}")
-print(
-    json.dumps(
-        ExtractionHelper.parse_text_to_event(text2), indent=2, ensure_ascii=False
-    )
-)
+# # Test Case 2: Duration based ("One hour")
+# text2 = "明天十点开会一个小时，讨论产品架构"
+# print(f"Input: {text2}")
+# print(
+#     json.dumps(
+#         ExtractionHelper.parse_text_to_event(text2), indent=2, ensure_ascii=False
+#     )
+# )
 
-print("-" * 20)
+# print("-" * 20)
 
-# Test Case 3: Informal / Mixed numbers ("明早十点")
-text3 = "明早十点去见客户"
-print(f"Input: {text3}")
-print(
-    json.dumps(
-        ExtractionHelper.parse_text_to_event(text3), indent=2, ensure_ascii=False
-    )
-)
+# # Test Case 3: Informal / Mixed numbers ("明早十点")
+# text3 = "明早十点去见客户"
+# print(f"Input: {text3}")
+# print(
+#     json.dumps(
+#         ExtractionHelper.parse_text_to_event(text3), indent=2, ensure_ascii=False
+#     )
+# )

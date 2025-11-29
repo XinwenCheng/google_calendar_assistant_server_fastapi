@@ -26,7 +26,7 @@ class OpenAIHelper:
         return transcription.text
 
     def text_to_event(text: str):
-        system_prompt = PromptHelper.get_system_prompt("transcription_to_json")
+        system_prompt = PromptHelper.get_prompt_transcription_to_json()
         print(f"receive_audio() system_prompt: {system_prompt}")
 
         response = openAIClient.chat.completions.create(

@@ -77,6 +77,8 @@ async def receive_audio(audio_blob: UploadFile = File(...)):
         result_json = OpenAIHelper.text_to_event(text=user_text)
         print(f"receive_audio() result_json: {result_json}")
 
+        event_data = None
+
         try:
             event_data = json.loads(result_json)  # Parse JSON string to dict
         except json.JSONDecodeError:
@@ -84,14 +86,18 @@ async def receive_audio(audio_blob: UploadFile = File(...)):
 
             return {"status": "error", "message": "Invalid JSON from AI"}
 
+        print(f"receive_audio() event_data: {event_data}")
+
         # Simply see the event_data is OK if 'title' exists.
         if "title" in event_data:
             try:
-                await GoogleCalendarHelper.check_conflict(
+                conflict_check_result = await GoogleCalendarHelper.check_conflict(
                     context=browser_context,
+                    event_data=event_data,
                     user_text=user_text,
                     result_json=result_json,
                 )
+                print(f"receive_audio() {conflict_check_result}")
 
             except Exception as e:
                 pending_event_data = event_data
