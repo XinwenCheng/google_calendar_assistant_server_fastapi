@@ -24,11 +24,6 @@ app.add_middleware(
 )
 
 
-@app.get("/")
-def read_root():
-    return "Hey there, I'm your Google Calendar Assistant."
-
-
 browser_context = None
 pending_event_data = None  # Temporarily store the conflict agenda.
 
