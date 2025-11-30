@@ -76,6 +76,7 @@ async def receive_audio(audio_blob: UploadFile = File(...)):
 
         try:
             event_data = json.loads(result_json)  # Parse JSON string to dict
+            print(f"receive_audio() event_data: {event_data}")
         except json.JSONDecodeError:
             print("receive_audio() error: Failed to parse JSON from AI response")
 
@@ -83,7 +84,9 @@ async def receive_audio(audio_blob: UploadFile = File(...)):
 
         print(f"receive_audio() event_data: {event_data}")
 
-        if "start_time" in event_data:
+        if "message" in event_data:
+            return {"status": "error", "message": event_data["message"]}
+        elif "start_time" in event_data:
             try:
                 await GoogleCalendarHelper.check_conflict(
                     context=browser_context,
