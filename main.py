@@ -50,74 +50,16 @@ async def startup():
 
 @app.post("/audio-recording")
 async def receive_audio(audio_blob: UploadFile = File(...)):
-    global browser_context, pending_event_data
+    global browser_context
 
     print(
         f"receive_audio() audio_blob.filename: {audio_blob.filename}, audio_blob.size: {audio_blob.size}"
     )
 
-    # temp_filename = f"temp_{audio_blob.filename}"
-
-    # with open(temp_filename, "wb") as buffer:
-    #     shutil.copyfileobj(
-    #         audio_blob.file, buffer
-    #     )  # Save the uploaded file temporarily.
-
     temp_filename = FileHelper.save(audio_blob)
 
     try:
-        user_text = OpenAIHelper.audio_to_text(filename=temp_filename)
-
-        # demoResult = ExtractionHelper.parse_text_to_event(user_text=user_text) # Demo purpose ONLY.
-        # print(f"receive_audio() demoResult: ${json.dumps(demoResult)}"")
-
-        result_json = OpenAIHelper.text_to_event(text=user_text)
-        print(f"receive_audio() result_json: {result_json}")
-
-        event_data = None
-
-        try:
-            event_data = json.loads(result_json)  # Parse JSON string to dict
-            print(f"receive_audio() event_data: {event_data}")
-        except json.JSONDecodeError:
-            print("receive_audio() error: Failed to parse JSON from AI response")
-
-            return {"status": "error", "message": "Invalid JSON from AI"}
-
-        print(f"receive_audio() event_data: {event_data}")
-
-        if "message" in event_data:
-            return {"status": "error", "message": event_data["message"]}
-        elif "start_time" in event_data:
-            try:
-                await GoogleCalendarHelper.check_conflict(
-                    context=browser_context,
-                    event_data=event_data,
-                    user_text=user_text,
-                    result_json=result_json,
-                )
-
-            except Exception as e:
-                if pending_event_data is None:
-                    pending_event_data = event_data
-
-                return {"status": "conflict", "message": str(e)}
-
-        if (
-            pending_event_data is not None
-            and "start_time" in event_data
-            and "end_time" in event_data
-        ):
-            print(f"receive_audio() pending_event_data: {pending_event_data}")
-            event_data["title"] = pending_event_data.get("title")
-
-        await GoogleCalendarHelper.append_event(
-            context=browser_context, event_data=event_data
-        )
-
-        pending_event_data = None
-
-        return {"status": "succeed", "transcription": user_text, "data": result_json}
+        return await handle_audio(temp_filename)
 
     except Exception as e:
         print(f"receive_audio() e: {e}")
@@ -127,3 +69,62 @@ async def receive_audio(audio_blob: UploadFile = File(...)):
     finally:
         if os.path.exists(temp_filename):
             os.remove(temp_filename)  # Clean up.
+
+
+async def handle_audio(filename: str):
+    global pending_event_data
+
+    print(f"handle_audio() filename: {filename}")
+
+    user_text = OpenAIHelper.audio_to_text(filename=filename)
+
+    # demoResult = ExtractionHelper.parse_text_to_event(user_text=user_text) # Demo purpose ONLY.
+    # print(f"receive_audio() demoResult: ${json.dumps(demoResult)}"")
+
+    result_json = OpenAIHelper.text_to_event(text=user_text)
+    print(f"receive_audio() result_json: {result_json}")
+
+    event_data = None
+
+    try:
+        event_data = json.loads(result_json)  # Parse JSON string to dict
+        print(f"receive_audio() event_data: {event_data}")
+    except json.JSONDecodeError:
+        print("receive_audio() error: Failed to parse JSON from AI response")
+
+        return {"status": "error", "message": "Invalid JSON from AI"}
+
+    print(f"receive_audio() event_data: {event_data}")
+
+    if "message" in event_data:
+        return {"status": "error", "message": event_data["message"]}
+    elif "start_time" in event_data:
+        try:
+            await GoogleCalendarHelper.check_conflict(
+                context=browser_context,
+                event_data=event_data,
+                user_text=user_text,
+                result_json=result_json,
+            )
+
+        except Exception as e:
+            if pending_event_data is None:
+                pending_event_data = event_data
+
+            return {"status": "conflict", "message": str(e)}
+
+    if (
+        pending_event_data is not None
+        and "start_time" in event_data
+        and "end_time" in event_data
+    ):
+        print(f"receive_audio() pending_event_data: {pending_event_data}")
+        event_data["title"] = pending_event_data.get("title")
+
+    await GoogleCalendarHelper.append_event(
+        context=browser_context, event_data=event_data
+    )
+
+    pending_event_data = None
+
+    return {"status": "success", "transcription": user_text, "data": result_json}

@@ -126,6 +126,4 @@ class GoogleCalendarHelper:
         await save_button.click()
         await asyncio.sleep(2)  # Wait for saving process completed.
 
-        print(
-            "GoogleCalendarHelper append_event() Event added successfully via Playwright."
-        )
+        print("GoogleCalendarHelper append_event() Event added successfully.")
