@@ -3,12 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
-import shutil
 import json
 from helpers.extraction_helper import ExtractionHelper
 from helpers.open_ai_helper import OpenAIHelper
 from helpers.google_calendar_helper import GoogleCalendarHelper
 from helpers.playwright_helper import PlaywrightHelper
+from helpers.file_helper import FileHelper
 
 
 load_dotenv()  # Load environment variables from .env file
@@ -56,12 +56,14 @@ async def receive_audio(audio_blob: UploadFile = File(...)):
         f"receive_audio() audio_blob.filename: {audio_blob.filename}, audio_blob.size: {audio_blob.size}"
     )
 
-    temp_filename = f"temp_{audio_blob.filename}"
+    # temp_filename = f"temp_{audio_blob.filename}"
 
-    with open(temp_filename, "wb") as buffer:
-        shutil.copyfileobj(
-            audio_blob.file, buffer
-        )  # Save the uploaded file temporarily.
+    # with open(temp_filename, "wb") as buffer:
+    #     shutil.copyfileobj(
+    #         audio_blob.file, buffer
+    #     )  # Save the uploaded file temporarily.
+
+    temp_filename = FileHelper.save(audio_blob)
 
     try:
         user_text = OpenAIHelper.audio_to_text(filename=temp_filename)
